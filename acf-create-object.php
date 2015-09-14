@@ -8,8 +8,8 @@
  * @wordpress-plugin
  * Plugin Name:       Advanced Custom Fields: Create Object
  * Plugin URI:        http://Jupitercow.com/
- * Description:       Very basic plugin that allows a basic interface for creating posts or users from the front end through ACF.
- * Version:           1.1.0
+ * Description:       Very basic plugin that allows a basic interface for creating posts or users from the front end through ACF 4.
+ * Version:           1.1.1
  * Author:            Jupitercow
  * Author URI:        http://Jupitercow.com/
  * Contributor:       Jake Snyder
@@ -82,14 +82,9 @@ class Acf_Create_Object
 	 */
 	public function run()
 	{
-		if (! $this->test_requirements() ) { return false; }
-
 		$this->settings();
 
-		register_activation_hook( __FILE__,   array($this, 'activation') );
-		register_deactivation_hook( __FILE__, array($this, 'deactivation') );
-
-		add_action( 'init',                   array($this, 'init') );
+		add_action( 'init',                          array($this, 'init') );
 	}
 
 	/**
@@ -102,7 +97,7 @@ class Acf_Create_Object
 	public function test_requirements()
 	{
 		// Look for ACF
-		if (! class_exists('acf') ) { return false; }
+		if ( ! class_exists('acf') && ! class_exists('Acf') ) { return false; }
 		return true;
 	}
 
@@ -185,6 +180,8 @@ class Acf_Create_Object
 	 */
 	public function init()
 	{
+		if (! $this->test_requirements() ) { return false; }
+
 		$this->settings = apply_filters( "{$this->prefix}/create_object/settings", $this->settings );
 
 		$this->plugins_loaded();
@@ -197,6 +194,23 @@ class Acf_Create_Object
 
 		// Load values from user's profile (non-meta)
 		add_filter( 'acf/load_value',                array($this, 'load_profile_fields'), 10, 3 );
+		add_filter( 'acf/load_value',                array($this, 'remove_new_post_value'), 99, 3 );
+	}
+
+	/**
+	 * Remove "new_post" values
+	 *
+	 * When 'new_post' gets stored in options, this keeps it from loading up by default
+	 *
+	 * @author  Jake Snyder
+	 * @type	filter
+	 */
+	public function remove_new_post_value( $value, $post_id, $field )
+	{
+		if ( 'new_post' == $post_id ) {
+			$value = false;
+		}
+		return $value;
 	}
 
 	/**
@@ -222,7 +236,7 @@ class Acf_Create_Object
 	 */
 	public function load_profile_fields( $value, $post_id, $field )
 	{
-		if (! $value && in_array($field['name'], $this->settings['profile_fields']) )
+		if ( ! $value && in_array($field['name'], $this->settings['profile_fields']) )
 		{
 			$user = get_user_by( 'id', $post_id );
 			if ( $user )
